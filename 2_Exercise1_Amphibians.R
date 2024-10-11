@@ -75,16 +75,41 @@ data <- read.csv("./data.csv")
 sites <- read.csv("./SEWY_Sites.csv", header = T)
 
 # the "." = current working directory
-# Now, let's read in our shapefile. We'll use the `sf` package for this:
-wy <- st_read(".", layer = "wy_county")
-
 # Let's peak at our CSV data:
 View(data)
 View(sites)
 
 # Note that the `data` file is our amphibian data, whereas the `sites` file is a data frame with spatial data (X and Y) in it.
-# However, as a CSV file, `sites` is not a spatial file. There is no datum, and thus spatial information, associated with this file
-# 
+# However, as a CSV file, `sites` is not a spatial file. There is no datum, and thus no spatial information, associated with this file
+# To make this CSV file into a spatial file, *we need to know what datum the data was collected in.* 
+# Conveniently, I collected this data - each site's GPS point is in WGS84 format.
+
+sites <- sites %>% 
+  st_as_sf(coords = c("X", "Y"), crs = "epsg:4326")
+# EPSG = a unique code that all datums have 
+# EPSG 4326 is WGS84, a global datum
+
+# Now that sites is a spatial file, let's join the `sites` information to the `data`. 
+# Since `data` has a column with the site information in it, we can left join these two data frames by site
+df <- data %>% 
+  left_join(sites, by = c("SiteName"))
+
+View(df) # take a peak at df and what it looks like!
+
+# To check whether every site was joined correctly, we can search for NAs in the geometry field:
+which(is.na(df$geometry), arr.ind = T)
+
+# no NAs exist in this column :)
+# If NAs existed, then ensure all site names (or whichever field you're joining your data with) are named correctly!
+
+# Now, let's read in our shapefile. We'll use the `sf` package for this:
+wy <- st_read(".", layer = "wy_county")
+
+# let's plot using mapview!
+mapview(df, zcol = "Species", col.regions = brewer.pal(6, "Dark2")) +
+  mapview(wy, zcol = "COUNTYNAME", col.regions = brewer.pal(23, "Spectral"), legend = F)
+
+
 
 
 
