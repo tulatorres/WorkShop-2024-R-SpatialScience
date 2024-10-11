@@ -105,9 +105,78 @@ which(is.na(df$geometry), arr.ind = T)
 # Now, let's read in our shapefile. We'll use the `sf` package for this:
 wy <- st_read(".", layer = "wy_county")
 
-# let's plot using mapview!
+# let's look at the coordinate reference system (CRS), or datum, of our shp
+st_crs(wy)
+
+# Huh. The Wyoming shapefile is in a local datum, NAD83, Zone 13.
+# Our spatial data, `df`, is the global datum, WGS84. 
+# Not only is NAD83, Zone 13, a local datum (and better captures the geoid in this region), NAD83's horizontal datum is in meters. This datum is better at calculating distance metrics. 
+# WGS84, or the typical long/lat we're used to, uses the Earth's gravitational and magnetic model - it's not a great way to measure distances between points. 
+# Let's convert our `df` to NAD83, Zone 13:
+
+df <- df %>% 
+  st_transform(crs = "epsg:26913")
+
+# or st_transform(crs = st_crs(wy))
+# epsg:26913 = NAD83, Zone 13
+
+# Now that we're in the same spatial reference system, let's plot using mapview!
 mapview(df, zcol = "Species", col.regions = brewer.pal(6, "Dark2")) +
   mapview(wy, zcol = "COUNTYNAME", col.regions = brewer.pal(23, "Spectral"), legend = F)
+
+#_____________________________________________
+#### 2. Analyzing Spatial Data ####
+#_____________________________________________
+##### 2a. Calculating Landscape Metrics #####
+# Landscape Metrics (LM) are the composition and configuration of different land uses within a region
+# LMs are important for assessing habitat fragmentation/degradation, connectivity, and more
+# We'll manipulate a raster layer, the National Land Cover Database (NLCD), to create separate raster layers important for amphibian presence.
+# NLCD is unique as a raster: it contains discrete data classifications for different land uses within each cell (30m)
+# While not perfect, NLCD data can help us calculate general trends in land use across North America
+
+# First, let's look at the NLCD layer itself. 
+r[[3]]
+# classifying the variables:
+# 41, 42, 43  forest (frt): mixed, deciduous, evergreen
+# 71          open land (old): shrub/scrub
+# 81, 82      ag land (ald): hay/pasture, cultivated crops
+# 90, 95      wetlands (wet): woody wetlands, emerging herbaceous
+# 11          open water (owa): open water
+
+# creating matrices for reclassifying the NLCD data
+mfrt <- matrix(c(0, 40, 0,
+                 41, 43, 1, 
+                 45, 99, 0), ncol = 3, byrow = T)
+mold <- matrix(c(0, 70, 0,
+                 71, 72, 1,
+                 73, 99, 0), ncol = 3, byrow = T)
+mald <- matrix(c(0, 80, 0,
+                 81, 82, 1,
+                 83, 99, 0), ncol = 3, byrow = T)
+mwet <- matrix(c(0, 89, 0,
+                 90, 95, 1,
+                 96, 99, 0), ncol = 3, byrow = T)
+mowa <- matrix(c(0, 10, 0,
+                 11, 12, 1,
+                 13, 99, 0), ncol = 3, byrow = T)
+
+# classifying using terra::classify
+frt <- classify(r[[3]], mfrt, right = NA)
+old <- classify(r[[3]], mold, right = NA)
+ald <- classify(r[[3]], mald, right = NA)
+wet <- classify(r[[3]], mwet, right = NA)
+owa <- classify(r[[3]], mowa, right = NA)
+
+names(frt)<- "forest"
+names(old)<- "open land"
+names(ald)<- "ag land"
+names(wet)<- "wetlands"
+names(owa)<- "open waters"
+
+rlm <- c(frt, old, ald, wet, owa)  
+
+plot(rlm)
+
 
 
 
