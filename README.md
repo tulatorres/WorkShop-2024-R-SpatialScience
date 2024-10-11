@@ -7,11 +7,11 @@ First, check out the Spatial Science Considerations folder for a (very) brief ov
 * resolutions
 
 # References for this workshop
-[Vermeer, G.J.O. 1999.](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://3dsymsam.nl/wp-content/uploads/2016/02/factors.pdf) Factors affecting spatial resolution. *Geophysics* 64(3):942-953
+[Vermeer, G.J.O. 1999.](https://library.seg.org/doi/abs/10.1190/1.1444602) Factors affecting spatial resolution. *Geophysics* 64(3):942-953
 
 [Atkinson, P.M. & P.J. Curran.](https://openurl-ebsco-com.libproxy.uwyo.edu/EPDB%3Agcd%3A1%3A692449/detailv2?sid=ebsco%3Aplink%3Ascholar&id=ebsco%3Agcd%3A167357581&crl=c) 1997. Choosing an appropriate spatial resolution for remote sensing investigations. *Photogrammetric Engineering & Remote Sensing* 63(12):1345-1351
 
-[Lu, D. & Q. Weng.](chrome-extension://efaidnbmnnnibpcajpcglclefindmkaj/https://www.tandfonline.com/doi/pdf/10.1080/01431160600746456) 2007. A survey of image classification methods and techniques for improving classification performance. *International Journal of Remote Sensing* 28(5):823-870
+[Lu, D. & Q. Weng.](https://www.tandfonline.com/doi/full/10.1080/01431160600746456) 2007. A survey of image classification methods and techniques for improving classification performance. *International Journal of Remote Sensing* 28(5):823-870
 
 With, K.A. 2019. Essentials of Landscape Ecology. Oxford University Press.
 
