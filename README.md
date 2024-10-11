@@ -1,10 +1,13 @@
+# WORK IN PROGRESS #
 # WorkShop-2024-R-SpatialScience
 This repository is in collaboration with the R Ladies Workshop Series at the University of Wyoming. We'll review (a) what spatial science is, (b) considerations of spatial science, (c) best practices for collecting spatial data, and (d) learning how to model in R.
 
-First, check out the Spatial Science Considerations folder for a (very) brief overview of spatial data, including:
+First, check out Spatial Science Considerations for a (very) brief overview of spatial data, including:
 * projections and datums
 * remote sensing
 * resolutions
+
+After reading the Considerations, check out Exercise 1
 
 # References for this workshop
 [Vermeer, G.J.O. 1999.](https://library.seg.org/doi/abs/10.1190/1.1444602) Factors affecting spatial resolution. *Geophysics* 64(3):942-953
