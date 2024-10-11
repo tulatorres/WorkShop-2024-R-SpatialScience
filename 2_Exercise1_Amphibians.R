@@ -51,6 +51,39 @@ path = "C:/Users/melan/OneDrive/Desktop/drive/rworkshop_mlt"
 setwd(path)
 
 ##### 1c. Raster Data #####
+# let's read in the raster data
+# We'll pulling up all the files with the .tif extension
+files <- list.files(pattern = "*.tif$", full.names = T)
+
+# creating a raster stack (i.e., a list of all rasters) using `terra::rast`
+r <- rast(files)
+
+# plotting the rasters
+plot(r)
+
+# Oh no! Our surface relief ratio (SRR) raster's name did not carry over into R correctly.
+# Let's name it so we know what this variable is.
+names(r[[4]]) <- "srr"
+
+##### 1d. Vector Data #####
+# Now, let's read in our vector data
+# We have three vectors in the form of CSV files and a shapefile
+# As a reminder, shapefiles are spatial files that are *always* vector data (points, lines, polygons)
+# First, let's read our CSV files
+
+data <- read.csv("./data.csv")
+sites <- read.csv("./SEWY_Sites.csv", header = T)
+
+# the "." = current working directory
+# Now, let's read in our shapefile. We'll use the `sf` package for this:
+wy <- st_read(".", layer = "wy_county")
+
+# Let's peak at our CSV data:
+View(data)
+View(sites)
+
+# Note that the `data` file is our amphibian data, whereas the `sites` file is a data frame with spatial data (X and Y) in it.
+# However, as a CSV file, `sites` is not a spatial file. There is no datum, and thus spatial information, associated with this file
 # 
 
 
