@@ -557,12 +557,32 @@ ggplot() +
   layer_spatial(pred) +
   geom_sf(data = dat.psma, aes(group=as.factor(Present), color = as.factor(Present)))
 
+# Note: if your model has landscape metrics, you need to create a raster of the landscape metric. You can use a moving window method to do such.
+
 # Now we may want to choose some threshold: good for PSMA or not. 
 # We'll create a probabilities data frame for where PSMA are found, along with a data frame of inputs vs fitted values
 foundPSMA<-data.frame(obs = dat.psma$Present, fitted = mod.top$fitted.values) %>% 
   group_by(obs) %>% 
   summarise(Min = min(fitted), 
             Max = max(fitted))
+
+# 0.3 (or 30%) selected as threshold, so create a table we can use to reclassify the raster
+rcls<-data.frame(from = c(0, .3), to = c(.3, 1), becomes = c(0, 1))
+
+# Reclassify
+predClass<- classify(pred, rcl = as.matrix(rcls))
+
+ggplot() +
+  layer_spatial(predClass) +
+  geom_sf(data = dat.psma, aes(group=as.factor(Present), color = as.factor(Present)))
+
+#_____________________________________________
+##### 3c. Random Forest Models #####
+#_____________________________________________
+# Random Forest is a type of classification and regression tree (CART) model. 
+# We can use this to determine the best set of variables that explain a species' presence on the landscape (versus our hypothesis method earlier).
+# Let's try it out!
+
 
 
 
