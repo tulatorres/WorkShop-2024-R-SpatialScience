@@ -559,7 +559,7 @@ ggplot() +
 
 # Now we may want to choose some threshold: good for PSMA or not. 
 # We'll create a probabilities data frame for where PSMA are found, along with a data frame of inputs vs fitted values
-foundCactus<-data.frame(obs = dat.psma$Present, fitted = mod.top$fitted.values) %>% 
+foundPSMA<-data.frame(obs = dat.psma$Present, fitted = mod.top$fitted.values) %>% 
   group_by(obs) %>% 
   summarise(Min = min(fitted), 
             Max = max(fitted))
