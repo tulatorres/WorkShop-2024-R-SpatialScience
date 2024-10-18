@@ -1,7 +1,5 @@
-#### IN PROGRESS ####
-
 #_____________________________________________
-# Exercise 1: Amphibians in SE Wyoming
+# Exercise: Amphibians in SE Wyoming
 #_____________________________________________
 ## Background ##
 # Goals of Exercise:
@@ -594,26 +592,71 @@ ggplot() +
 # We can use this to determine the best set of variables that explain a species' presence on the landscape (versus our hypothesis method earlier).
 # Let's try it out!
 
-xdata <- dat.psma %>% 
-  select(dat.psma[,4:ncol(dat.psma)]) %>% 
-  st_drop_geometry() %>% 
-  as.categorical()
+xdata <- df[,3:ncol(df)]
+ydata <- df %>% 
+  select(Present)
 
-ydata <- dat.psma %>% 
-  st_drop_geometry() %>% 
-  select(Present) %>% 
-  as.factor()
+xdata <- st_drop_geometry(xdata)
+ydata <- st_drop_geometry(ydata)
+
+ydata <- as.factor(ydata$Present)
 
 msel <- rf.modelSel(xdata = xdata, ydata = ydata, imp.scale="se", ntree = 501, r = c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9), final.model=T, seed = 425, replacement=F)
 
-msel
+# look at this one first
+msel$test
 
-# Fit a Random Forest model using "Selected variables:" and I prefer to use an odd number of trees to avoid ties.
-modRf<- randomForest(x = dat.psma %>% 
+
+
+# this tells us all the models tested at the different importance percentiles (r in rf.modelSel)
+# We are looking for (a) the lowest out of bag (OOB) error, lowest number of parameters, and lowest class error
+
+
+# Let's continue with  a Random Forest model using "Selected variables:" and I prefer to use an odd number of trees to avoid ties.
+modRf<- randomForest(x = df %>% 
                        st_drop_geometry() %>% 
-                       dplyr::select(msel$selvars), y = dat.psma$Present, ntree = 501, importance = TRUE)
+                       dplyr::select(msel$selvars), y = df$Present, ntree = 501, importance = TRUE)
+
+# view model summary
+modRf
+
+# What is the OOB error? Is that a high value or no? 
+# What is the confusion matrix? What is that telling you?
+
+# Let's continue and see the important factors
+varImpPlot(modRf)
+
+# Conduct internal prediction response
+pred2<- predict(modRf, df %>% 
+                  st_drop_geometry(), type ="response")
 
 
+# internal prob response
+obsProb<- as.data.frame(predict(modRf, df %>% 
+                                  st_drop_geometry(), type = "prob"))
+head(obsProb)
 
+# make data frame with pred and prob
+mObsPred<- data.frame(Observed = as.integer(as.character(df$Present)),
+                      PRED = as.integer(as.character(pred2)),
+                      Prob1 = obsProb[, 2],
+                      Prob0 = obsProb[, 1])
+
+# count correct preds
+mop <-(mObsPred$Observed == mObsPred$PRED)
+table(mop)
+
+# validation rate
+mpcc <- (length(mop[mop=="TRUE"])/length(mop))*100
+mpcc
+
+# internal auc. This isn't real, we need a training and a validation set. RF is too good when working with smaller datasets
+intAUC<- auc(df$Present, obsProb[, 2])
+intAUC
+
+prdctnRf <- prediction(mObsPred$PRED, mObsPred$Observed)
+perfRf <- performance(prdctnRf, measure = "tpr", x.measure = "fpr")
+plot(perfRf, col = rainbow(10))
+abline(coef = c(0, 1))
 
 
