@@ -45,6 +45,9 @@ install_and_load(c("sf",
                    "corrplot",
                    "PerformanceAnalytics",
                    "spdep"))
+# if rfUtilities is having problems:
+remotes::install_github("jeffreyevans/rfUtilities")
+
 #_____________________________________________
 #### 1. Loading Spatial Data ####
 #_____________________________________________
