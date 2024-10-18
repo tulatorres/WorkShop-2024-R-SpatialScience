@@ -169,15 +169,15 @@ rc <- terra::crop(r, buff)
 
 # Now that our rasters are cropped to size, let's calculate a few more variables, specifically from our elevation layer (dem)
 # slope (terra)
-slope <- terrain(r["dem"], v = "slope", neighbors = 8, unit = "degrees")
+slope <- terrain(rc["dem"], v = "slope", neighbors = 8, unit = "degrees")
 
 # aspect (terra)
-asp <- terrain(r["dem"], v = "aspect", neighbors = 8, unit = "degrees")
+asp <- terrain(rc["dem"], v = "aspect", neighbors = 8, unit = "degrees")
 
 # we can also calculate HLI and SRR using the spatialEco package! However, for time's sake, I included those rasters from the beginning :)
 
 # creating a stack of the rasters that have same extent, origin, crs, resolution
-rs <- c(r["dem"], r["ffp"], r["gsp"], r["srr"], r["hli"], slope, asp)
+rs <- c(rc["dem"], rc["ffp"], rc["gsp"], rc["srr"], rc["hli"], slope, asp)
 
 # Let's focus on one species for time's sake - boreal chorus frog (Pseudacris maculata, PSMA)
 psma <- df %>% 
@@ -290,11 +290,10 @@ names(owa)<- "open waters"
 
 rlm <- c(frt, old, wet, owa)  # creating a raster stack 
 
-plot(rlm)
 
 # Let's look at these landuse values compared to our sites
 df.buff <- st_buffer(df, dist = 500, joinStyle = "ROUND")
-df.rlm <- terra::mask(x = rlm.cp, mask = df.buff, updatevalue = NA, touches = T)
+df.rlm <- terra::mask(x = rlm, mask = df.buff, updatevalue = NA, touches = T)
 
 # we'll use tmap to observe these rasters
 tmap_mode("view")
@@ -342,7 +341,8 @@ View(list_lsm())
 
 
 # creating a list of the variables we're interested in.
-rlm.l <- list(rlm.cp["forest"], rlm.cp["open land"], rlm.cp["wetland"], rlm.cp["open water"])
+rlm.l <- list(rlm["forest"], rlm["open land"], rlm["wetland"], rlm["open water"])
+
 
 # running an lapply function for the landscape metrics we're interested in
 psma.lm <- lapply(seq_along(rlm.l), function(x)
@@ -359,9 +359,6 @@ psma.lm <- lapply(seq_along(psma.lm), function(x)
 
 View(psma.lm[[1]])
 
-
-# check to make sure the names were transferred correctly
-lapply(psma.lm, names)
 
 # note that there are some points that are duplicated - there are two class values per sample (1 and 0). What does this mean?
 
@@ -399,6 +396,8 @@ psma.lm <- lapply(seq_along(psma.lm), function(x)
     )
 )
 
+# check to make sure the names were transferred correctly
+lapply(psma.lm, names)
 
 # now, let's join the LMs into one table
 
@@ -431,7 +430,7 @@ dat.psma <- dat.psma %>%
 # let's check for NAs
 which(is.na(dat.psma), arr.ind = T)
 
-# we have NAs in these rows/columns. Let's view these points and see what's up
+# we have NAs in some rows/columns. Let's view these points and see what's up
 na.dat <- dat.psma %>% 
   filter(if_any(everything(), is.na))
 
@@ -459,17 +458,28 @@ dat.psma <- dat.psma %>%
 ## covariates/predictor variables/independent variables***
 ## First, let's check to see how correlated our variables are by running a correlation matrix
 
-cor(st_drop_geometry(dat.psma[,-c(1:3)]), use = "complete.obs")
+c <- cor(st_drop_geometry(dat.psma[,-c(1:3)]), use = "complete.obs")
 
-# Below are a few ways to plot a correlation matrix:
+# that's gross. Let's filter out which variables are highly correlated with each other:
+
+c[!lower.tri(c)] <- NA #removes diagonal and redundant values
+
+cdf <- data.frame(c) %>% 
+  rownames_to_column() %>% 
+  gather(key = "variable", value="correlation", -rowname) %>% 
+  filter(abs(correlation) > 0.7) # can change to be more or less conservative
+
+View(cdf)
+
+# now we can filter out which variables are redundant to each other!
+
+# Below are a few ways to plot a correlation matrix that also show this relationshp
 corrplot((cor(st_drop_geometry(dat.psma[,-c(1:3)]), method = "pearson")))
 
 res <- rcorr(as.matrix(st_drop_geometry(dat.psma[,-c(1:3)])))
 
 chart.Correlation(st_drop_geometry(dat.psma[,-c(1:3)]), histogram=TRUE, pch=19)
-
-# which variables are highly correlated with each other?
-# Also, why do we care about variable independence?
+# last one is pretty ugly, but it works well when you're not dealing with many variables (maybe 5 - 6 vars)
 
 # In general, if the absolute value of the correlation coefficient between variables =  0.7, then the two variables cannot be in the same model. 
 # Pick one of the two variables, then move on.
@@ -480,7 +490,7 @@ chart.Correlation(st_drop_geometry(dat.psma[,-c(1:3)]), histogram=TRUE, pch=19)
 # first, create a data frame of just the variables:
 m <- dat.psma[,4:ncol(dat.psma)] 
 m <- st_drop_geometry(m)
-
+set.seed(425)
 
 # inputing the data frame into the multi-collinearity function
 mcl <- multi.collinear(m, perm = T, leave.out = T, n = 1000, p=0.05, na.rm = T)
@@ -497,12 +507,17 @@ m <- m[,-which(names(m) %in% mcl[mcl$frequency > 700,]$variables)]
 mcl <- multi.collinear(m, perm = T, leave.out = T, n = 1000, p=0.05, na.rm = T)
 
 View(mcl)
-# Now, we have a grouping of frequency =300+
-m <- m[,-which(names(m) %in% mcl[mcl$frequency > 300,]$variables)]
+
+# Now, we have a grouping of frequency =00+
+m <- m[,-which(names(m) %in% mcl[mcl$frequency > 400,]$variables)]
 
 mcl <- multi.collinear(m, perm = T, leave.out = T, n = 1000, p=0.05, na.rm = T)
 
 # We're at frequency = 0 for all variables! Now, we can continue!
+vars <- mcl$variables
+
+df <- dat.psma %>% 
+  select(AllID, Present, all_of(vars))
 
 #_____________________________________________
 ##### 3b. Linear Regression Models #####
@@ -511,19 +526,13 @@ mcl <- multi.collinear(m, perm = T, leave.out = T, n = 1000, p=0.05, na.rm = T)
 # We'll use a generalized linear model (GLM) because we're working with presence/absence data (binary). Linear models (LM) in R are not great at dealing with presence/absence data
 
 # We have several variables, so we can hypothesize which variables influence PSMA presence on the landscape. 
-names(dat.psma)
+names(psma.vars)
 
 # water availability model
-mod.wet <- glm(formula = Present ~ cpland_wet + pd_wet + ai_wet + cpland_owa + pd_owa + fracc_owa + ai_owa, data = dat.psma %>% st_drop_geometry(), family = binomial(link="logit"))
+mod.wet <- glm(formula = Present ~ pd_wet, data = df %>% st_drop_geometry(), family = binomial(link="logit"))
 
 # topography model
-mod.top <- glm(formula = Present ~ dem+ srr + slope + aspect + hli, data = dat.psma %>% st_drop_geometry(), family = binomial(link="logit"))
-
-# precipitation model
-mod.prcp <- glm(formula = Present ~ ffp + gsp + slope + aspect + hli, data = dat.psma %>% st_drop_geometry(), family = binomial(link="logit"))
-
-# null model
-mod.null <- glm(formula= Present ~ ., data = dat.psma %>% st_drop_geometry(), family = binomial(link="logit"))
+mod.top <- glm(formula = Present ~ dem + srr + slope + aspect, data = df %>% st_drop_geometry(), family = binomial(link="logit"))
 
 # create your own model! What do you think?
 
@@ -534,47 +543,49 @@ mod.null <- glm(formula= Present ~ ., data = dat.psma %>% st_drop_geometry(), fa
 
 summary(mod.wet)
 summary(mod.top)
-summary(mod.prcp)
-summary(mod.null) # this is going to be nuts, but this is a demo, right? :)
+
 
 # Let's do some model validation, specifically using Area under the Receiving Operator Curve (AUC and ROC)
 # This model validation method tests the sensitivity and specificity (true positive vs false positive rate) of our model 
 (wetAUC <- auc(dat.psma$Present, mod.wet$fitted.values))
 (topAUC <- auc(dat.psma$Present, mod.top$fitted.values))
-(prcpAUC <- auc(dat.psma$Present, mod.prcp$fitted.values))
+
 
 # our topographic model is the best one based on the AUC
 # let's get the ROC plot to visualize the AUC
-pred <- prediction(fitted(mod.top), dat.psma$Present)
+pred <- prediction(fitted(mod.top), df$Present)
 perf <- performance(pred, measure="tpr", x.measure="fpr")
 plot(perf, col=rainbow(10))
 abline(coef=c(0,1))
 
 # It's fine and dandy to create a model, but being able to predict back to the landscape is what we want. WHERE should we expect to have a good chance of PSMA occurring?
-pred<- predict(rs, mod.top, type='response', progress="text")
+
+topr <- c(rs["dem"], rs["srr"], rs["slope"], rs["aspect"])
+
+pred<- predict(topr, mod.top, type='response', progress="text")
 
 ggplot() +
   layer_spatial(pred) +
-  geom_sf(data = dat.psma, aes(group=as.factor(Present), color = as.factor(Present)))
+  geom_sf(data = df, aes(group=as.factor(Present), color = as.factor(Present)))
 
-# Note: if your model has landscape metrics, you need to create a raster of the landscape metric. You can use a moving window method to do such.
+# Note: if your model has landscape metrics, you need to create a raster of the landscape metric itself. You can use a moving window method to do such. It's very computationally intensive, so we're not going to do that for this exercise.
 
 # Now we may want to choose some threshold: good for PSMA or not. 
 # We'll create a probabilities data frame for where PSMA are found, along with a data frame of inputs vs fitted values
-foundPSMA<-data.frame(obs = dat.psma$Present, fitted = mod.top$fitted.values) %>% 
+foundPSMA<-data.frame(obs = df$Present, fitted = mod.top$fitted.values) %>% 
   group_by(obs) %>% 
   summarise(Min = min(fitted), 
             Max = max(fitted))
 
-# 0.3 (or 30%) selected as threshold, so create a table we can use to reclassify the raster
-rcls<-data.frame(from = c(0, .3), to = c(.3, 1), becomes = c(0, 1))
+# 0.3 (or 30% probability PSMA at spot) selected as threshold, so create a table we can use to reclassify the raster
+rcls <- data.frame(from = c(0, .3), to = c(.3, 1), becomes = c(0, 1))
 
 # Reclassify
 predClass<- classify(pred, rcl = as.matrix(rcls))
 
 ggplot() +
   layer_spatial(predClass) +
-  geom_sf(data = dat.psma, aes(group=as.factor(Present), color = as.factor(Present)))
+  geom_sf(data = df, aes(group=as.factor(Present), color = as.factor(Present)))
 
 #_____________________________________________
 ##### 3c. Random Forest Models #####
@@ -582,6 +593,26 @@ ggplot() +
 # Random Forest is a type of classification and regression tree (CART) model. 
 # We can use this to determine the best set of variables that explain a species' presence on the landscape (versus our hypothesis method earlier).
 # Let's try it out!
+
+xdata <- dat.psma %>% 
+  select(dat.psma[,4:ncol(dat.psma)]) %>% 
+  st_drop_geometry() %>% 
+  as.categorical()
+
+ydata <- dat.psma %>% 
+  st_drop_geometry() %>% 
+  select(Present) %>% 
+  as.factor()
+
+msel <- rf.modelSel(xdata = xdata, ydata = ydata, imp.scale="se", ntree = 501, r = c(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9), final.model=T, seed = 425, replacement=F)
+
+msel
+
+# Fit a Random Forest model using "Selected variables:" and I prefer to use an odd number of trees to avoid ties.
+modRf<- randomForest(x = dat.psma %>% 
+                       st_drop_geometry() %>% 
+                       dplyr::select(msel$selvars), y = dat.psma$Present, ntree = 501, importance = TRUE)
+
 
 
 
