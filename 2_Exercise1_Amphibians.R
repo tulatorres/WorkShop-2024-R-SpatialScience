@@ -44,9 +44,13 @@ install_and_load(c("sf",
                    "Hmisc",
                    "corrplot",
                    "PerformanceAnalytics",
-                   "spdep"))
+                   "spdep",
+                  "remotes"))
 # if rfUtilities is having problems:
-remotes::install_github("jeffreyevans/rfUtilities")
+library(devtools)
+install_version("rfUtilities", version = "2.1.5", repos = "http://cran.us.r-project.org")
+library(rfUtilities)
+
 
 #_____________________________________________
 #### 1. Loading Spatial Data ####
